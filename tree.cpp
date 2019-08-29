@@ -1,20 +1,36 @@
-#include <ftw.h>
-#include <iostream>
+#include <algorithm>
 #include <cstdio>
-#include <vector>
+#include <iostream>
 #include <string>
+#include <string_view>
+#include <vector>
+
+#include <ftw.h>
+
+static bool show_all = false;
 
 static int cb(const char* fpath, const struct stat* sb, int typeflag)
 {
+    if (not show_all) {
+        std::string_view sv{fpath};
+        if (sv.npos != sv.find("/.")) return 0;
+    }
     std::cout << fpath << '\n';
     return 0;
 }
 
 int main(int argc, const char** argv)
 {
-#if 1
     std::vector<std::string> args{argv + 1, argv + argc};
+
+    auto iter = std::find(args.begin(), args.end(), "-a");
+    if (args.end() != iter) {
+        show_all = true;
+        args.erase(std::remove(args.begin(), args.end(), "-a"), args.end());
+    }
+
     if (0 == args.size()) args.push_back(".");
+
     for (const auto& arg: args) {
         int rc{ ftw(arg.c_str(), &cb, 20) };
         if (0 != rc) {
@@ -23,42 +39,5 @@ int main(int argc, const char** argv)
         }
     }
     return EXIT_SUCCESS;
-#else
-    for (int i = 1; i < argc; ++i) {
-        int rc = ftw(argv[i], &cb, 20);
-        if (0 != rc) {
-            std::perror("ftw");
-            return EXIT_FAILURE;
-        }
-    }
-    return EXIT_SUCCESS;
-#endif
 }
-
-#if 0
-int main(int argc, const char** argv)
-{
-    struct Range {
-        char* f;
-        char* l;
-        Range(char* first, char* last): f(first), l(last) {}
-        char* begin() const { return f; }
-        char* end() const { return l; }
-    };
-
-    for (const char* arg: Range{argv + 1, argv + argc}) {
-        const char* arg = *arg_;
-        int rc = ftw(arg,
-                [](const char* fpath, const struct stat* sb, int typeflag){
-                    std::cout << fpath << '\n';
-                    return 0;
-                }, 100);
-        if (0 != rc) {
-            std::perror("ftw");
-            return EXIT_FAILURE;
-        }
-    }
-    return EXIT_SUCCESS;
-}
-#endif
 
